@@ -5,7 +5,7 @@ Easy, beautiful line charts with sane defaults
 Dependencies
 ------------
 * Raphael (included)
-* dependence.js [https://github.com/jcarver989/dependence.js] (for compiling)
+* dependence.js [Link](https://github.com/jcarver989/dependence.js) (for compiling)
 
 Usage
 -------------
