@@ -18,17 +18,20 @@
 # @import scaling.coffee
 # @import base_chart.coffee
 
-bar = (label, value, average, comparison) ->
-  {
-    label: label,
-    value: value,
-    average: average
-    comparison: comparison
-  }
-
+bar = () ->
 
 class BulletChart extends BaseChart
   constructor: (dom_id, options = {}) ->
+    bar = (label, value, average, comparison, min, max, blob = false) ->
+      {
+        label: label
+        value: value
+        average: average
+        comparison: comparison
+        min: min
+        max: max
+        blob: blob
+      }
     super dom_id, new BulletChartOptions(options)
     @bars = []
 
@@ -36,11 +39,29 @@ class BulletChart extends BaseChart
     @bars.push bar.apply(bar, arguments)
 
 
-  draw_background: (point, y_offset) ->
+  draw_background: (point, y_offset, bar_midpoint, label) ->
+    if bar.blob
+      x_offset = point.x-@options.area_width
+      width = @options.area_width*2
+      text_anchor = 'middle'
+    else
+      if label > 0
+        x_offset = bar_midpoint.x
+        width = point.x-bar_midpoint.x
+        text_anchor = 'end'
+      else if label < 0
+        x_offset = point.x
+        width = bar_midpoint.x-point.x
+        text_anchor = 'start'
+      else
+        x_offset = bar_midpoint.x-@options.area_width/2
+        width = @options.area_width
+        text_anchor = 'middle'
+
     rect = @r.rect(
-      @options.x_padding,
+      x_offset,
       y_offset,
-      point.x,
+      width,
       @options.area_width
     )
 
@@ -48,13 +69,25 @@ class BulletChart extends BaseChart
       fill: @options.area_color
       "stroke": "none" 
     })
+    
+    new Label(
+      @r,
+      if label > 0 then point.x - (@options.average_width) else if label < 0 then point.x + (@options.average_width) else point.x,
+      y_offset + @options.area_width/2,
+      label + @options.area_label_suffix,
+      @options.label_format,
+      @options.area_width - 2,
+      @options.font_family,
+      "#fff",
+      {'font-weight': 'bold', 'text-anchor': text_anchor}
+    ).draw()
 
   draw_line: (point, background_midpoint) ->
     y = background_midpoint.y - @options.line_width/2
     rect = @r.rect(
-      @options.x_padding,
+      @options.x_padding
       y,
-      point.x,
+      point.x-@options.x_padding
       @options.line_width
     )
 
@@ -62,7 +95,6 @@ class BulletChart extends BaseChart
       fill: @options.line_color
       "stroke" : "none"
     })
-
   
   draw_average: (point, midpoint_y) ->
     rect = @r.rect(
@@ -79,6 +111,23 @@ class BulletChart extends BaseChart
 
   draw_label: (text, offset) ->
 
+  draw_x_label: (raw_point, point) ->
+    fmt = @options.label_format
+    size = @options.x_label_size
+    font_family = @options.font_family
+
+    label = if raw_point.is_date_type == true then new Date(raw_point.x) else Math.round(raw_point.x)
+    new Label(
+      @r,
+      point.x,
+      @options.area_width + 20,
+      label,
+      fmt,
+      size,
+      font_family,
+      @options.x_label_color
+    ).draw()
+
 
   clear: () ->
     super()
@@ -86,6 +135,8 @@ class BulletChart extends BaseChart
 
 
   draw: () ->
+    tick_height = Math.max(@options.area_width, @options.line_width, @options.average_width) + 5
+
     for bar, i in @bars
 
       p = [
@@ -97,18 +148,24 @@ class BulletChart extends BaseChart
 
       [max_x, min_x, max_y, min_y] = Scaling.get_ranges_for_points(p)
 
-      x = new Scaler()
+      min_x = bar.min if bar.min
+      max_x = bar.max if bar.max
+
+      p.push(new Point(max_x, 0)) # another dummy for scaling
+
+      s = new Scaler()
       .domain([min_x, max_x])
       .range([@options.x_padding, @width - @options.x_padding])
 
-      points = (new Point(x(point.x), 0) for point in p)
+      points = (new Point(s(point.x), 0) for point in p)
+
+      step_size = (max_x - min_x) / @options.max_x_labels
+      ticks = (new Point(min_x+step_size*j, 0) for j in [0..(@options.max_x_labels-1)])
 
       y_offset = i * (@options.area_width + @options.bar_margin)
-      @draw_background(points[0], y_offset)
-
       midpoint_y = y_offset + @options.area_width/2
       @draw_line(points[1], new Point(points[0].x, midpoint_y))
-
+      @draw_background(points[0], y_offset, points[3], if Math.round(p[0].x) != p[0].x then p[0].x.toFixed(1) else p[0].x)
       @draw_average(points[2], midpoint_y)
 
       new Label(
@@ -120,5 +177,16 @@ class BulletChart extends BaseChart
        @size = 14,
        @options.font_family
       ).draw()
+
+      for k in ticks
+        @r.path('M'+(new Point(s(k.x)).x)+','+tick_height+'L'+(new Point(s(k.x)).x)+','+(tick_height + 5)).attr({'stroke': @options.x_label_color})
+        @draw_x_label(k, new Point(s(k.x)))
+
+      # always draw the last tick
+      @r.path('M'+(points[4].x)+','+tick_height+'L'+(points[4].x)+','+(tick_height + 5)).attr({'stroke': @options.x_label_color})
+      @draw_x_label(p[4], points[4])
+
+      @r
+
 
 exports.BulletChart = BulletChart

@@ -20,9 +20,10 @@ class BulletChartOptions
 
     area_color: "#00aadd"
     area_width: 20 
-    area_opacity: 0.2 
+    area_opacity: 0.2
+    area_label_suffix: "" 
 
-    bar_margin: 8 
+    bar_margin: 35
 
     show_average: true
 
@@ -32,6 +33,8 @@ class BulletChartOptions
 
     font_family: "Helvetica, Arial, sans-serif"
     x_label_size: 14
+    x_label_color: "#000"
+    max_x_labels: 8
     y_label_size: 14
 
     x_padding: 45
