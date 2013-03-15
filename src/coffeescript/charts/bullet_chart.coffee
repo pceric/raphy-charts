@@ -49,10 +49,12 @@ class BulletChart extends BaseChart
         x_offset = bar_midpoint.x
         width = point.x-bar_midpoint.x
         text_anchor = 'end'
+        point.x -= 5  # a touch of padding
       else if label < 0
         x_offset = point.x
         width = bar_midpoint.x-point.x
         text_anchor = 'start'
+        point.x += 5  # a touch of padding
       else
         x_offset = bar_midpoint.x-@options.area_width/2
         width = @options.area_width
@@ -72,14 +74,14 @@ class BulletChart extends BaseChart
     
     new Label(
       @r,
-      if label > 0 then point.x - (@options.average_width) else if label < 0 then point.x + (@options.average_width) else point.x,
+      point.x,
       y_offset + @options.area_width/2,
       label + @options.area_label_suffix,
       @options.label_format,
-      @options.area_width - 2,
+      Math.min(@options.area_width - 6, width/1.5 - 6),
       @options.font_family,
       "#fff",
-      {'font-weight': 'bold', 'text-anchor': text_anchor}
+      {'text-anchor': text_anchor}
     ).draw()
 
   draw_line: (point, background_midpoint) ->
